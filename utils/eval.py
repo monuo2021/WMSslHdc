@@ -35,6 +35,8 @@ def inference_loop(FM, dataset, device=0) -> torch.FloatTensor:
 		closest, _ = torch.max(similarity, dim=1)
 
 		## Invert similarities (confidence scores) to retrieve OOD scores (uncertainties)
+		# 取负号 - closest，我们将最大相似度转化为不确定性分数。因为相似度越大，表示模型越自信，
+		# 所以负值越小表示不确定性越低，负值越大表示不确定性越高。
 		## Store these OOD scores
 		uncertainties = torch.cat((uncertainties, -closest))
 	

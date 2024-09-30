@@ -31,6 +31,10 @@ def main(args, config):
     FM.hookLayers()
 
     ## Setup the data
+    # id_calibration_set: 用于校准ID数据的特征均值。
+    # id_test_set: 用于测试模型在ID数据集上的性能。
+    # near_ood_test_set: 一个接近分布（nearOOD）的测试数据集。
+    # ood_names: 列表，包含不同OOD数据集的名称。
     id_calibration_set, id_test_set, near_ood_test_set, ood_names = setup_data(args, config)
 
     ## We label OODness scores as 0 for ID and > 0 for OOD

@@ -29,6 +29,7 @@ class FeatureMonitor():
 		self.model.eval()
 		self.model.to(self.device)
 
+	# 这是一个钩子函数，用于存储每一层的输出特征。钩子函数是在模型前向传播时被调用的。
 	@torch.no_grad()
 	def __hook(self, model_self, inputs, outputs, idx):
 		"""
@@ -112,6 +113,7 @@ class FeatureMonitor():
 		
 		return feature_bundle
 
+	# 计算网络中每一层的特征的平均值。这些均值将用于对特征进行归一化，使得特征在输入变化时更具鲁棒性。
 	@torch.no_grad()
 	def captureFeatureMeans(self, calibration_set):
 		"""
@@ -161,14 +163,17 @@ class FeatureMonitor():
 			calibration_set (torchvision.Dataset): The known in-distribution calibration set
 		"""
 		## Initialise the class bundles
+		# 创建一个二维张量，用于存储每个类别的高维描述符。张量的形状为(n_classes, hyper_size)，
+		# 其中n_classes是类别数，hyper_size是特征在高维空间中的维度（超维度）。
 		bundles = torch.zeros(
 			(self.config['n_classes'], 
 			self.config['hyper_size'])
 			).to(self.device)
 		
 		## Iterate over the calibration set
+		# 其中x是输入图像，y是其对应的标签。
 		for x, y in tqdm(calibration_set):
-			y = y.squeeze().to(self.device)
+			y = y.squeeze().to(self.device)			# 去除 y 的单维度（如果有）
 			self.model.forward(x.to(self.device))
 			## Collect image descriptor bundles
 			feature_bundle = self.batchFeatureBundle()
@@ -190,13 +195,16 @@ class FeatureMonitor():
 		Generates the hyperdimensional projection matrices for each layer
 		"""
 		## Dummy input for forward pass
+		# 生成一个虚拟输入张量，大小为(1, 3, input_height, input_width)。其中input_height和input_width由self.config['input_size']提供。
 		sample_input = torch.zeros((1, 3) + self.config['input_size'])
 		self.model.forward(sample_input.to(self.device))
 		matrices = []
 		for f in self.features:
 			## Grab number of channels for feature map
+			# 获取特征张量的通道数（c），即特征图的深度。
 			c = f.size()[1]
 			## Sample projection matrix
+			# 初始化一个形状为(c, hyper_size)的空投影矩阵。这里，hyper_size是高维空间的维度大小。
 			proj_matrix = torch.empty((c, self.config['hyper_size']))
 			## Initialise projection matrix with orthogonal values
 			nn.init.orthogonal_(proj_matrix)

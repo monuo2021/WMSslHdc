@@ -20,8 +20,9 @@ import matplotlib.pyplot as plt
 
 def compute_metric(known, novel):
     stype = ""
-    
+    # tp 和 fp 是用于存储真阳性和假阳性计数的字典。
     tp, fp = dict(), dict()
+    # tnr_at_tpr95 用于存储 TNR at TPR95 的值。
     tnr_at_tpr95 = dict()
     
     known.sort()
@@ -68,7 +69,7 @@ def compute_metric(known, novel):
     fpr = np.concatenate([[1.], fp[stype]/fp[stype][0], [0.]])
     results[stype][mtype] = -np.trapz(1.-fpr, tpr)
     
-    # DTACC
+    # DTACC：衡量的是在不同决策阈值下，模型的准确性。它考虑了真阳性率和真阴性率。
     mtype = 'DTACC'
     results[stype][mtype] = .5 * (tp[stype]/tp[stype][0] + 1.-fp[stype]/fp[stype][0]).max()
     
