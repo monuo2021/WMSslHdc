@@ -42,7 +42,7 @@ def main(args, config):
 
     ## Inference
     # First on the ID test set
-    predict_loop(FM, id_test_set)
+    scores = predict_loop(FM, id_test_set)
 
 
 if __name__ == '__main__':

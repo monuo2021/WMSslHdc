@@ -92,6 +92,7 @@ def predict_loop(FM, dataset, device=0) -> torch.FloatTensor:
 	f1 = f1_score(all_labels, all_predictions, average='weighted')
 
 	print(f'精确率: {precision:.4f}, 召回率: {recall:.4f}, F1 分数: {f1:.4f}')
+	return uncertainties
 
 def generate_metrics(ood_id, uncertainties, gt):
 	"""
