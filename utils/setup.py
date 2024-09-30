@@ -8,7 +8,7 @@ def setup_args():
 	## Setup the arg parser
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--batch', 			type=int,	default=512)
-	parser.add_argument('--modelpath', 		type=str, 	default='./ckpts/WRN28_Cifar10_Normal.tar')
+	parser.add_argument('--modelpath', 		type=str, 	default='./ckpts/WRN_Normal_CIFAR10_0.tar')
 	parser.add_argument('--datadir', 		type=str,	default='./data/')
 	parser.add_argument('--no-plots',		dest='plot', action='store_false')
 	parser.add_argument('--pooling', 		type=str, 	default='max')
