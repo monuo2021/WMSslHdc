@@ -3,6 +3,8 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 
+from HDFF.BNN import BHDC
+from HDFF.LinearModel import LinearModel
 
 from models.wideresnet_UoS import BasicBlock, NetworkBlock
 from models.wideresnet_UoS_Normal import BasicBlock as BasicBlock2, NetworkBlock as NetworkBlock2
@@ -109,7 +111,7 @@ class FeatureMonitor():
 			## Project into high dimensional space
 			feat @= self.proj[idx].to(self.device)# (batch_size, hyper_dim)
 			## Store if first batch else apply bundling
-			feature_bundle = feat if not idx else self.VSA.bundle(feature_bundle, feat)
+			feature_bundle = feat if not idx else self.VSA.bundle(feature_bundle, feat)	# (batch_size, hyper_dim)
 		
 		return feature_bundle
 
@@ -188,6 +190,133 @@ class FeatureMonitor():
 		
 		## Store the class descriptor vectors
 		self.data['class_bundles'] = bundles
+
+	# 二值神经网络重训练类超维向量
+	# def createUpdateClassBundles(self, calibration_set):
+	# 	"""
+	# 	Creates and update the class descriptor vectors for each class in the calibration set
+	#
+	# 	Args:
+	# 		calibration_set (torchvision.Dataset): The known in-distribution calibration set
+	# 	"""
+	# 	# 获取超维空间的维度和类别数量
+	# 	hyper_size = self.config['hyper_size']
+	# 	n_classes = self.config['n_classes']
+	# 	device = self.device
+	#
+	# 	# 初始化二值神经网络
+	# 	BNNmodel = BHDC(inshape=hyper_size, outshape=n_classes, dropout_prob=0.3).to(device)
+	# 	criterion = nn.CrossEntropyLoss()
+	# 	optimizer = torch.optim.Adam(BNNmodel.parameters(), weight_decay=3e-2, lr=1e-3)
+	# 	epochs = 100  # 可根据需要调整
+	#
+	# 	# 准备存储输入特征和标签的列表
+	# 	all_features = []
+	# 	all_labels = []
+	#
+	# 	for x, y in tqdm(calibration_set):
+	# 		y = y.squeeze().to(device)
+	#
+	# 		# 禁用梯度计算
+	# 		with torch.no_grad():
+	# 			self.model.forward(x.to(device))
+	# 			feature_bundle = self.batchFeatureBundle()  # 获取特征
+	#
+	# 		all_features.append(feature_bundle)
+	# 		all_labels.append(y)
+	#
+	# 	# 将所有批次的数据拼接起来
+	# 	all_features = torch.cat(all_features, dim=0)
+	# 	all_labels = torch.cat(all_labels, dim=0)
+	#
+	# 	# 创建数据集和数据加载器
+	# 	dataset = torch.utils.data.TensorDataset(all_features, all_labels)
+	# 	dataloader = torch.utils.data.DataLoader(dataset, batch_size=256, shuffle=True)
+	#
+	# 	# 开始训练
+	# 	BNNmodel.train()
+	# 	for epoch in range(epochs):
+	# 		for features, labels in dataloader:
+	# 			features = features.to(device)
+	# 			labels = labels.to(device)
+	# 			optimizer.zero_grad()
+	# 			outputs = BNNmodel(features)  # 这里会计算梯度
+	# 			loss = criterion(outputs, labels)
+	# 			loss.backward()
+	# 			optimizer.step()
+	# 		print(f'Epoch [{epoch + 1}/{epochs}], Loss: {loss.item():.4f}')
+	#
+	# 	# 提取二值化的权重作为类超维向量
+	# 	BNNmodel.eval()  # 评估模式
+	# 	with torch.no_grad():
+	# 		real_weights = BNNmodel.binary_weight_l2.weight  # Shape: (n_classes, hyper_size)
+	# 		binary_weights = torch.sign(real_weights)
+	# 		class_bundles = binary_weights.to(device)
+	#
+	# 	# 将新的类超维向量保存到 self.data['class_bundles']
+	# 	self.data['class_bundles'] = class_bundles
+
+	def createUpdateClassBundles(self, calibration_set):
+		"""
+		Creates and update the class descriptor vectors for each class in the calibration set
+
+		Args:
+			calibration_set (torchvision.Dataset): The known in-distribution calibration set
+		"""
+		# 获取超维空间的维度和类别数量
+		hyper_size = self.config['hyper_size']
+		n_classes = self.config['n_classes']
+		device = self.device
+
+		# 初始化二值神经网络
+		Lmodel = LinearModel(in_features=hyper_size, out_features=n_classes).to(device)
+		criterion = nn.CrossEntropyLoss()
+		optimizer = torch.optim.Adam(Lmodel.parameters(), weight_decay=3e-2, lr=1e-3)
+		epochs = 100  # 可根据需要调整
+
+		# 准备存储输入特征和标签的列表
+		all_features = []
+		all_labels = []
+
+		for x, y in tqdm(calibration_set):
+			y = y.squeeze().to(device)
+
+			# 禁用梯度计算
+			with torch.no_grad():
+				self.model.forward(x.to(device))
+				feature_bundle = self.batchFeatureBundle()  # 获取特征
+
+			all_features.append(feature_bundle)
+			all_labels.append(y)
+
+		# 将所有批次的数据拼接起来
+		all_features = torch.cat(all_features, dim=0)
+		all_labels = torch.cat(all_labels, dim=0)
+
+		# 创建数据集和数据加载器
+		dataset = torch.utils.data.TensorDataset(all_features, all_labels)
+		dataloader = torch.utils.data.DataLoader(dataset, batch_size=256, shuffle=True)
+
+		# 开始训练
+		Lmodel.train()
+		for epoch in range(epochs):
+			for features, labels in dataloader:
+				features = features.to(device)
+				labels = labels.to(device)
+				optimizer.zero_grad()
+				outputs = Lmodel(features)  # 这里会计算梯度
+				loss = criterion(outputs, labels)
+				loss.backward()
+				optimizer.step()
+			print(f'Epoch [{epoch + 1}/{epochs}], Loss: {loss.item():.4f}')
+
+		# 提取训练后的类超维向量
+		Lmodel.eval()
+		with torch.no_grad():
+			class_bundles = Lmodel.linear.weight  # Shape: (n_classes, hyper_size)
+
+		# 将新的类超维向量保存到 self.data['class_bundles']
+		self.data['class_bundles'] = class_bundles
 
 	@torch.no_grad()
 	def sampleProjectionMatrices(self):

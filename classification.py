@@ -38,10 +38,12 @@ def main(args, config):
     id_calibration_set, id_test_set, near_ood_test_set, ood_names = setup_data(args, config)
 
     FM.captureFeatureMeans(id_calibration_set)
+    print('--------------------使用重训练之前的准确率--------------------')
     FM.createClassBundles(id_calibration_set)
+    print('-----------------------重训练后的准确率-----------------------')
+    FM.createUpdateClassBundles(id_calibration_set)
 
     ## Inference
-    # First on the ID test set
     scores = predict_loop(FM, id_test_set)
 
 
