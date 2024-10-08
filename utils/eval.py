@@ -3,7 +3,7 @@ from tqdm import tqdm
 
 import torch
 import torchmetrics.functional as Metrics
-from sklearn.metrics import precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 def inference_loop(FM, dataset, device=0) -> torch.FloatTensor:
 	"""Given a the feature monitor and dataset, generates OOD scores for the dataset
@@ -86,12 +86,17 @@ def predict_loop(FM, dataset, device=0) -> torch.FloatTensor:
 	all_labels = all_labels.cpu().numpy()
 	all_predictions = all_predictions.cpu().numpy()
 
-	# 计算精确率、召回率和 F1 分数
+	# 计算每一类的精确率
+	precision_per_class = precision_score(all_labels, all_predictions, average=None)
+	# 计算整体精确率、召回率和 F1 分数
 	precision = precision_score(all_labels, all_predictions, average='weighted')
 	recall = recall_score(all_labels, all_predictions, average='weighted')
 	f1 = f1_score(all_labels, all_predictions, average='weighted')
+	# 计算整体准确率
+	accuracy = accuracy_score(all_labels, all_predictions)
 
-	print(f'精确率: {precision:.4f}, 召回率: {recall:.4f}, F1 分数: {f1:.4f}')
+	print(f'每一类的精确率: {precision_per_class}')
+	print(f'整体精确率: {precision:.4f}, 召回率: {recall:.4f}, F1 分数: {f1:.4f}, 准确率: {accuracy:.4f}')
 	return uncertainties
 
 def generate_metrics(ood_id, uncertainties, gt):
