@@ -272,7 +272,7 @@ class FeatureMonitor():
 		Lmodel = LinearModel(in_features=hyper_size, out_features=n_classes).to(device)
 		criterion = nn.CrossEntropyLoss()
 		optimizer = torch.optim.Adam(Lmodel.parameters(), weight_decay=3e-2, lr=1e-3)
-		epochs = 100  # 可根据需要调整
+		epochs = 80  # 可根据需要调整
 
 		# 准备存储输入特征和标签的列表
 		all_features = []
