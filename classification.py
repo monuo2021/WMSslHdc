@@ -38,13 +38,63 @@ def main(args, config):
     id_calibration_set, id_test_set, near_ood_test_set, ood_names = setup_data(args, config)
 
     FM.captureFeatureMeans(id_calibration_set)
-    print('--------------------使用重训练之前的准确率--------------------')
-    FM.createClassBundles(id_calibration_set)
+    # print('--------------------使用重训练之前的准确率--------------------')
+    # FM.createClassBundles(id_calibration_set)
     print('-----------------------重训练后的准确率-----------------------')
     FM.createUpdateClassBundles(id_calibration_set)
 
     ## Inference
     scores = predict_loop(FM, id_test_set)
+
+    ## We label OODness scores as 0 for ID and > 0 for OOD
+    id_label = 0
+    ood_labels = torch.arange(len(ood_names)) + 1
+    labels = torch.zeros_like(scores)
+
+    ## Then on the OOD test sets
+    for ood_name, ood_label in zip(ood_names, ood_labels):
+        print(f'Capturing scores for {ood_name}')
+        if 'CIFAR' in ood_name:
+            ood_set = near_ood_test_set
+        else:
+            ood_set = get_ood_dataset(ood_name, args.batch)
+        temp_scores = inference_loop(FM, ood_set)
+        scores = torch.cat([scores, temp_scores])
+        labels = torch.cat([labels, ood_label * torch.ones_like(temp_scores)])
+
+    ## Calculate and present the results for each datasets
+    id_scores = scores[labels == id_label]
+    for ood_name, ood_label in zip(ood_names, ood_labels):
+        ood_scores = scores[labels == ood_label]
+        results = callog.compute_metric(
+            -id_scores.detach().cpu().numpy(),
+            -ood_scores.detach().cpu().numpy()
+        )
+        print(f'Metrics for {ood_name}')
+        callog.print_results(results)
+
+    if args.plot:
+        ## Aggregate over the MNIST, SUN and Other OODs
+        names = ['MNIST (AVG)', 'SUN (AVG)', 'Other (AVG)', ood_names[-1]]
+        id_lists = [[7, 8, 9], [1, 4, 5], [2, 3, 6, 10]]
+        new_labels = labels.clone()
+        for index, ids in enumerate(id_lists):
+            mask = torch.isin(labels, torch.tensor(ids).to(device))
+            new_labels[mask] = index + 1
+        labels = new_labels
+
+        ## Replace the label for near-OOD
+        labels[labels == labels.max()] = 4
+
+        ## Plot the F1 Scores
+        ## Currently disabled - behaviour of some libaries has changed since the paper was written
+        ## TODO: Readd this functionality with the new behaviour
+        # plot_f1(names, scores, labels, config['name'])
+
+        ## Plot the Angles
+        plot_angles(config['name'], id_calibration_set, names, FM, scores, labels)
+
+        exit()
 
 
 if __name__ == '__main__':
