@@ -40,12 +40,10 @@ def main(args, config):
     FM.captureFeatureMeans(id_calibration_set)
     print('--------------------使用重训练之前的准确率--------------------')
     FM.createClassBundles(id_calibration_set)
-    scores = predict_loop(FM, id_test_set)
+    scores = predict_loop(FM, id_test_set, config['n_classes'], image_name='tsne_BeforeRetrain.png')  ## Inference
     print('-----------------------重训练后的准确率-----------------------')
     FM.createUpdateClassBundles(id_calibration_set)
-
-    ## Inference
-    scores = predict_loop(FM, id_test_set)
+    scores = predict_loop(FM, id_test_set, config['n_classes'], image_name='tsne_AfterRetrain.png')  ## Inference
 
     ## We label OODness scores as 0 for ID and > 0 for OOD
     id_label = 0

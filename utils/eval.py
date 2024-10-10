@@ -1,9 +1,43 @@
+import os
 import torch
 from tqdm import tqdm 
 
 import torch
 import torchmetrics.functional as Metrics
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.manifold import TSNE
+import matplotlib.pyplot as plt
+
+
+def visualize_tsne(features, labels, n_classes, output_dir='./outs', image_name='tsne_visualization.png'):
+	"""
+    Visualizes the class hypervectors using t-SNE.
+
+    Args:
+        FM (HDFF.feature_monitor.FeatureMonitor): The FeatureMonitor object containing the class bundles.
+    """
+	# Ensure output directory exists
+	if not os.path.exists(output_dir):
+		os.makedirs(output_dir)
+
+	# 使用 t-SNE 将高维超维向量降至2维
+	tsne = TSNE(n_components=2, perplexity=9, random_state=42)
+	features_embedded = tsne.fit_transform(features)
+
+	# 可视化
+	plt.figure(figsize=(10, 8))
+	for i in range(n_classes):
+		mask = labels == i
+		plt.scatter(features_embedded[mask, 0], features_embedded[mask, 1], label=f'Class {i}', alpha=0.6)
+
+	plt.title('t-SNE Visualization of Class Hypervectors')
+	plt.legend(fontsize='small')
+
+	# 保存图片到 ./out 目录下
+	output_path = os.path.join(output_dir, image_name)
+	plt.savefig(output_path)
+	plt.close()
+
 
 def inference_loop(FM, dataset, device=0) -> torch.FloatTensor:
 	"""Given a the feature monitor and dataset, generates OOD scores for the dataset
@@ -43,8 +77,7 @@ def inference_loop(FM, dataset, device=0) -> torch.FloatTensor:
 	
 	return uncertainties
 
-
-def predict_loop(FM, dataset, device=0) -> torch.FloatTensor:
+def predict_loop(FM, dataset, n_classes, image_name='tsne_BeforeRetrain.png', device=0) -> torch.FloatTensor:
 	"""Given a the feature monitor and dataset, generates OOD scores for the dataset
 
 	Args:
@@ -58,6 +91,7 @@ def predict_loop(FM, dataset, device=0) -> torch.FloatTensor:
 
 	uncertainties = torch.empty(0).to(device)
 	# 初始化空的张量，用于存储真实标签和预测标签
+	all_features = torch.empty(0, dtype=torch.long).to(device)
 	all_labels = torch.empty(0, dtype=torch.long).to(device)  # 确保标签的类型为 long
 	all_predictions = torch.empty(0, dtype=torch.long).to(device)
 
@@ -78,13 +112,17 @@ def predict_loop(FM, dataset, device=0) -> torch.FloatTensor:
 		# values, indices = torch.max(a, dim=1) -> https://pytorch.org/docs/stable/generated/torch.max.html
 		closest, predictions = torch.max(similarity, dim=1)
 		uncertainties = torch.cat((uncertainties, -closest))
-		# 连接真实标签和预测标签
+		# 连接特征、真实标签和预测标签
+		all_features = torch.cat((all_features, feature_bundle.to(device)))
 		all_labels = torch.cat((all_labels, y.to(device)))  # 保存真实标签
 		all_predictions = torch.cat((all_predictions, predictions.to(device)))  # 保存预测标签
 
 	# 转换为 NumPy 数组，确保在 CPU 上进行操作
+	all_features = all_features.cpu().numpy()
 	all_labels = all_labels.cpu().numpy()
 	all_predictions = all_predictions.cpu().numpy()
+
+	visualize_tsne(all_features, all_predictions, n_classes, image_name=image_name)
 
 	# 计算每一类的精确率
 	precision_per_class = precision_score(all_labels, all_predictions, average=None)
