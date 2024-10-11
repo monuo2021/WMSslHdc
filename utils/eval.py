@@ -122,8 +122,6 @@ def predict_loop(FM, dataset, n_classes, image_name='tsne_BeforeRetrain.png', de
 	all_labels = all_labels.cpu().numpy()
 	all_predictions = all_predictions.cpu().numpy()
 
-	visualize_tsne(all_features, all_predictions, n_classes, image_name=image_name)
-
 	# 计算每一类的精确率
 	precision_per_class = precision_score(all_labels, all_predictions, average=None)
 	# 计算整体精确率、召回率和 F1 分数
@@ -135,6 +133,8 @@ def predict_loop(FM, dataset, n_classes, image_name='tsne_BeforeRetrain.png', de
 
 	print(f'每一类的精确率: {precision_per_class}')
 	print(f'整体精确率: {precision:.4f}, 召回率: {recall:.4f}, F1 分数: {f1:.4f}, 准确率: {accuracy:.4f}')
+
+	visualize_tsne(all_features, all_predictions, n_classes, image_name=image_name)
 	return uncertainties
 
 def generate_metrics(ood_id, uncertainties, gt):
