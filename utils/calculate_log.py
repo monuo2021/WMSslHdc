@@ -6,7 +6,6 @@ import torch
 from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
 import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
@@ -31,8 +30,10 @@ def compute_metric(known, novel):
     start = np.min([np.min(known),np.min(novel)])
     num_k = known.shape[0]
     num_n = novel.shape[0]
-    tp[stype] = -np.ones([num_k+num_n+1], dtype=int)
-    fp[stype] = -np.ones([num_k+num_n+1], dtype=int)
+    tp[stype] = -np.ones([num_k+num_n+1], dtype=int)    # tp[i] 表示在第 i 个阈值时，被正确识别为已知类的样本数量（即真阳性数量）。
+    fp[stype] = -np.ones([num_k+num_n+1], dtype=int)    # fp[i] 表示在第 i 个阈值时，被错误识别为已知类的新类样本数量（即假阳性数量）。
+    # 初始化 tp 和 fp 的首元素为 num_k 和 num_n，是因为在初始状态下（即在没有应用任何阈值时），
+    # 所有的已知类样本都被假设为正例（因此 tp[0] = num_k），所有的新类样本都被误判为正例（因此 fp[0] = num_n）。
     tp[stype][0], fp[stype][0] = num_k, num_n
     k, n = 0, 0
     for l in range(num_k+num_n):
@@ -53,7 +54,7 @@ def compute_metric(known, novel):
                 k += 1
                 tp[stype][l+1] = tp[stype][l] - 1
                 fp[stype][l+1] = fp[stype][l]
-    tpr95_pos = np.abs(tp[stype] / num_k - .95).argmin()
+    tpr95_pos = np.abs(tp[stype] / num_k - .95).argmin()    # tp数组的每个元素除以num_k，再减去0.95，找到最接近 0.95的位置。
     tnr_at_tpr95[stype] = 1. - fp[stype][tpr95_pos] / num_n
     mtypes = ['TNR', 'AUROC', 'DTACC', 'AUIN', 'AUOUT']
     results = dict()
