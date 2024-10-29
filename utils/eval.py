@@ -166,8 +166,6 @@ def predict_loop(FM, dataset, n_classes, image_name='tsne_BeforeRetrain.png', de
 						  matrix_title="Confusion Matrix on cifar10",
 						  conf_matrix_path="./outs/confusion_matrix.png")
 
-
-
 	return uncertainties
 
 def generate_metrics(ood_id, uncertainties, gt):
