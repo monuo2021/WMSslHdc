@@ -3,8 +3,9 @@ import torch
 from tqdm import tqdm 
 
 import torch
+import seaborn as sns
 import torchmetrics.functional as Metrics
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 
@@ -37,6 +38,29 @@ def visualize_tsne(features, labels, n_classes, output_dir='./outs', image_name=
 	output_path = os.path.join(output_dir, image_name)
 	plt.savefig(output_path)
 	plt.close()
+
+def draw_confusion_matrix(all_labels, all_predictions, n_classes, matrix_title="Confusion Matrix", conf_matrix_path=None):
+	conf_matrix = confusion_matrix(all_labels, all_predictions, normalize='true')
+	plt.figure(figsize=(12, 10))
+	sns.heatmap(
+		conf_matrix, annot=True, fmt='.2%', cmap='Blues',
+		xticklabels=range(n_classes), yticklabels=range(n_classes),
+		annot_kws={"size": 8},  # 控制字体大小
+		cbar_kws={"shrink": 0.8}  # 缩小色条
+	)
+	plt.xlabel('Predicted Labels', fontsize=8)
+	plt.ylabel('True Labels', fontsize=8)
+	plt.xticks(fontsize=6)  # 缩小 x 轴刻度标签字体
+	plt.yticks(fontsize=6)  # 缩小 y 轴刻度标签字体
+	plt.title(matrix_title, fontsize=10)
+
+	# 调整色条字体大小
+	colorbar = plt.gca().collections[0].colorbar
+	colorbar.ax.tick_params(labelsize=6)  # 调整色条刻度字体大小
+
+	plt.savefig(conf_matrix_path, bbox_inches='tight')
+	plt.close()
+	print(f'Normalized confusion matrix saved to {conf_matrix_path}')
 
 
 def inference_loop(FM, dataset, device=0) -> torch.FloatTensor:
@@ -134,7 +158,16 @@ def predict_loop(FM, dataset, n_classes, image_name='tsne_BeforeRetrain.png', de
 	print(f'每一类的精确率: {precision_per_class}')
 	print(f'整体精确率: {precision:.4f}, 召回率: {recall:.4f}, F1 分数: {f1:.4f}, 准确率: {accuracy:.4f}')
 
-	visualize_tsne(all_features, all_predictions, n_classes, image_name=image_name)
+	# visualize_tsne(all_features, all_predictions, n_classes, image_name=image_name)
+
+	draw_confusion_matrix(all_labels,  # y_gt=[0,5,1,6,3,...]
+						  all_predictions,  # y_pred=[0,5,1,6,3,...]
+						  n_classes,
+						  matrix_title="Confusion Matrix on cifar10",
+						  conf_matrix_path="./outs/confusion_matrix.png")
+
+
+
 	return uncertainties
 
 def generate_metrics(ood_id, uncertainties, gt):

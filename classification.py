@@ -37,40 +37,65 @@ def main(args, config):
     # ood_names: 列表，包含不同OOD数据集的名称。
     id_calibration_set, id_test_set, near_ood_test_set, ood_names = setup_data(args, config)
 
-    FM.captureFeatureMeans(id_calibration_set)
+    # FM.captureFeatureMeans(id_calibration_set)
+    FM.captureFeatureMeans(id_test_set)
     print('--------------------使用重训练之前的准确率--------------------')
-    FM.createClassBundles(id_calibration_set)
-    scores = predict_loop(FM, id_test_set, config['n_classes'], image_name='tsne_BeforeRetrain.png')  ## Inference
+    # FM.createClassBundles(id_calibration_set)
+    FM.createClassBundles(id_test_set)
+    # scores = predict_loop(FM, id_test_set, config['n_classes'], image_name='tsne_BeforeRetrain.png')  ## Inference
+    scores = predict_loop(FM, id_calibration_set, config['n_classes'], image_name='tsne_BeforeRetrain.png')  ## Inference
     print('-----------------------重训练后的准确率-----------------------')
-    FM.createUpdateClassBundles(id_calibration_set)
-    scores = predict_loop(FM, id_test_set, config['n_classes'], image_name='tsne_AfterRetrain.png')  ## Inference
+    # FM.createUpdateClassBundles(id_calibration_set)
+    FM.createUpdateClassBundles(id_test_set)
+    # scores = predict_loop(FM, id_test_set, config['n_classes'], image_name='tsne_AfterRetrain.png')  ## Inference
+    scores = predict_loop(FM, id_calibration_set, config['n_classes'], image_name='tsne_AfterRetrain.png')  ## Inference
 
     ## We label OODness scores as 0 for ID and > 0 for OOD
+    # id_label = 0
+    # ood_labels = torch.arange(len(ood_names)) + 1
+    # labels = torch.zeros_like(scores)
+    #
+    # ## Then on the OOD test sets
+    # for ood_name, ood_label in zip(ood_names, ood_labels):
+    #     print(f'Capturing scores for {ood_name}')
+    #     if 'CIFAR' in ood_name:
+    #         ood_set = near_ood_test_set
+    #     else:
+    #         ood_set = get_ood_dataset(ood_name, args.batch)
+    #     temp_scores = inference_loop(FM, ood_set)
+    #     scores = torch.cat([scores, temp_scores])
+    #     labels = torch.cat([labels, ood_label * torch.ones_like(temp_scores)])
+    #
+    # ## Calculate and present the results for each datasets
+    # id_scores = scores[labels == id_label]
+    # for ood_name, ood_label in zip(ood_names, ood_labels):
+    #     ood_scores = scores[labels == ood_label]
+    #     results = callog.compute_metric(
+    #         -id_scores.detach().cpu().numpy(),
+    #         -ood_scores.detach().cpu().numpy()
+    #     )
+    #     print(f'Metrics for {ood_name}')
+    #     callog.print_results(results)
     id_label = 0
-    ood_labels = torch.arange(len(ood_names)) + 1
+    ood_label = 1
     labels = torch.zeros_like(scores)
 
     ## Then on the OOD test sets
-    for ood_name, ood_label in zip(ood_names, ood_labels):
-        print(f'Capturing scores for {ood_name}')
-        if 'CIFAR' in ood_name:
-            ood_set = near_ood_test_set
-        else:
-            ood_set = get_ood_dataset(ood_name, args.batch)
-        temp_scores = inference_loop(FM, ood_set)
-        scores = torch.cat([scores, temp_scores])
-        labels = torch.cat([labels, ood_label * torch.ones_like(temp_scores)])
+    print(f'Capturing scores for CIFAR')
+    ood_set = near_ood_test_set
+    temp_scores = inference_loop(FM, ood_set)
+    scores = torch.cat([scores, temp_scores])
+    labels = torch.cat([labels, ood_label * torch.ones_like(temp_scores)])
 
     ## Calculate and present the results for each datasets
     id_scores = scores[labels == id_label]
-    for ood_name, ood_label in zip(ood_names, ood_labels):
-        ood_scores = scores[labels == ood_label]
-        results = callog.compute_metric(
-            -id_scores.detach().cpu().numpy(),
-            -ood_scores.detach().cpu().numpy()
-        )
-        print(f'Metrics for {ood_name}')
-        callog.print_results(results)
+    ood_scores = scores[labels == ood_label]
+    results = callog.compute_metric(
+        -id_scores.detach().cpu().numpy(),
+        -ood_scores.detach().cpu().numpy()
+    )
+    print(f'Metrics for CIFAR')
+    callog.print_results(results)
 
     if args.plot:
         ## Aggregate over the MNIST, SUN and Other OODs
