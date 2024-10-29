@@ -74,7 +74,7 @@ def compute_metric(known, novel):
     # fpr_sorted = fpr[::-1]
     # results[stype][mtype] = np.trapz(tpr_sorted, fpr_sorted)
 
-    # DTACC：衡量的是在不同决策阈值下，模型的准确性。它考虑了真阳性率和真阴性率。
+    # DTACC：衡量的是在不同决策阈值下，模型的准确性。它考虑了TPR和TNR。
     mtype = 'DTACC'
     results[stype][mtype] = .5 * (tp[stype]/tp[stype][0] + 1.-fp[stype]/fp[stype][0]).max()
     
