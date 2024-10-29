@@ -68,8 +68,12 @@ def compute_metric(known, novel):
     mtype = 'AUROC'
     tpr = np.concatenate([[1.], tp[stype]/tp[stype][0], [0.]])
     fpr = np.concatenate([[1.], fp[stype]/fp[stype][0], [0.]])
-    results[stype][mtype] = -np.trapz(1.-fpr, tpr)
-    
+    # results[stype][mtype] = -np.trapz(1.-fpr, tpr)
+    # 确保 tpr 和 fpr 顺序一致
+    tpr_sorted = tpr[::-1]
+    fpr_sorted = fpr[::-1]
+    results[stype][mtype] = np.trapz(tpr_sorted, fpr_sorted)
+
     # DTACC：衡量的是在不同决策阈值下，模型的准确性。它考虑了真阳性率和真阴性率。
     mtype = 'DTACC'
     results[stype][mtype] = .5 * (tp[stype]/tp[stype][0] + 1.-fp[stype]/fp[stype][0]).max()
